@@ -1,4 +1,13 @@
-﻿using System.Collections;
+﻿//Producer.cs
+//
+//Description: Continuously produces products and dispatches consumers to pick up in a cyclical mannor
+//Contains a coroutine which delays production by the var: productionDelay
+//Updates an gui to show inventory and remaining production delay time.
+//
+//Created by: Michael Feldman
+//Date: 5-29-2019
+
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -45,9 +54,30 @@ public class Producer : MonoBehaviour
                 productionTimerSprite.fillAmount = productionTimer / productionDelay;
             }
             yield return null;
-        }
-        
+        }        
     }
+
+    [ContextMenu("CeaseProduction")]
+    public void CeaseProduction()
+    {
+        StopAllCoroutines();
+        productionTimer = 0;
+        productionTimerSprite.fillAmount = 1;
+        productionTimerSprite.color = Color.red;
+    }
+
+    [ContextMenu("ResumeProduction")]
+    public void ResumeProduction()
+    {
+        
+        productionTimer = 0;
+        productionTimerSprite.fillAmount = 0;
+        productionTimerSprite.color = Color.white;
+
+        StartCoroutine(GenerateProduct());
+    }
+
+
 
     private void DispatchNextConsumer()
     {

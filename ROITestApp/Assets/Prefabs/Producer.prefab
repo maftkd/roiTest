@@ -144,6 +144,7 @@ GameObject:
   - component: {fileID: 8021324446838898804}
   - component: {fileID: 2228940656953749763}
   - component: {fileID: 3986295496333275868}
+  - component: {fileID: 8272999633583669332}
   m_Layer: 0
   m_Name: Text
   m_TagString: Untagged
@@ -200,11 +201,11 @@ MonoBehaviour:
       Version=1.0.0.0, Culture=neutral, PublicKeyToken=null
   m_FontData:
     m_Font: {fileID: 10102, guid: 0000000000000000e000000000000000, type: 0}
-    m_FontSize: 124
+    m_FontSize: 300
     m_FontStyle: 0
     m_BestFit: 0
-    m_MinSize: 10
-    m_MaxSize: 124
+    m_MinSize: 3
+    m_MaxSize: 300
     m_Alignment: 4
     m_AlignByGeometry: 0
     m_RichText: 1
@@ -212,6 +213,25 @@ MonoBehaviour:
     m_VerticalOverflow: 1
     m_LineSpacing: 1
   m_Text: 0
+--- !u!1183024399 &8272999633583669332
+LookAtConstraint:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 6045114984231214918}
+  m_Enabled: 1
+  m_Weight: 1
+  m_RotationAtRest: {x: 0, y: 0, z: 0}
+  m_RotationOffset: {x: 0, y: 0, z: 0}
+  m_Roll: 0
+  m_WorldUpObject: {fileID: 0}
+  m_UseUpObject: 0
+  m_IsContraintActive: 1
+  m_IsLocked: 1
+  m_Sources:
+  - sourceTransform: {fileID: 0}
+    weight: 1
 --- !u!1 &8607874569609209658
 GameObject:
   m_ObjectHideFlags: 0
@@ -317,6 +337,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bd6e381fe2e8b6f42931bc7a69852dc5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  internalId: 0
   productionTimerSprite: {fileID: 6606687068412061086}
   inventoryText: {fileID: 3986295496333275868}
   productionDelay: 3

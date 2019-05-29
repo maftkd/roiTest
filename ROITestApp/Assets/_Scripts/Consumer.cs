@@ -1,4 +1,11 @@
-﻿using System.Collections;
+﻿//Consumer.cs
+//
+//Description: Represents buildings that accept consume inventory of the producer. 
+//In order to acquire inventory, the consumers are responsible for dispatching vehicles. See DispatchVehicle below
+//
+//Created by: Michael Feldman
+//Date: 5-29-2019
+
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -10,9 +17,11 @@ public class Consumer : MonoBehaviour
     public Text inventoryText;
     private int inventory;
 
+    public Queue<Vector2Int> path;
     //trucks
     public Transform truckContainer;
     public Transform truckPrefab;
+    public Transform truckPool;
 
     // Start is called before the first frame update
     void Start()
@@ -21,12 +30,7 @@ public class Consumer : MonoBehaviour
         internalId = count;
         count++;
         inventory = 0;
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
+        truckPool = GameObject.Find("TruckPool").transform;
     }
 
     public void IncInventory()
@@ -37,13 +41,24 @@ public class Consumer : MonoBehaviour
 
     public void DispatchVehicle(Producer p)
     {
-        print("dispatching vehicle from Consumer: " + internalId + " to Producer: " + p.internalId);
-        Transform newTruck = Instantiate(truckPrefab, transform.position, Quaternion.identity, truckContainer);
+        //create a new truck at the consumers location
+        //later we can refactor this to utilize an object pool
+        //Transform newTruck = Instantiate(truckPrefab, transform.position, Quaternion.identity, truckContainer);
+        Transform newTruck = truckPool.GetChild(0);
+        newTruck.position = transform.position;
+        newTruck.SetParent(truckContainer);
         Truck mTruck = newTruck.GetComponent<Truck>();
         mTruck.targetProducer = p;
         mTruck.targetConsumer = this;
-        //get route
-        newTruck.GetComponent<Truck>().target = new Vector2Int(Mathf.RoundToInt(p.transform.position.x / GameSpawner.worldScale), 
-                                Mathf.RoundToInt(p.transform.position.z / GameSpawner.worldScale));
+        Vector2Int dest = new Vector2Int(Mathf.RoundToInt(p.transform.position.x / GameSpawner.worldScale),
+                        Mathf.RoundToInt(p.transform.position.z / GameSpawner.worldScale));
+        mTruck.SetDestinationPath(path,dest);
+    }
+
+    //modifier method called from GameSpawner during initialization
+    public void SetPath(Queue<Vector2Int> mPath)
+    {
+        if(path==null)
+            path = mPath;
     }
 }

@@ -1,16 +1,21 @@
 ﻿//GameSpawner.cs
 //
-//Description: Spawns producers, consumers, and roads. Performs A* Path finding to connect producers and consumers with roads
+//Description: Spawns producers, consumers, and roads. Performs Dijkstra's pathfinding to connect producers and consumers with roads
+//where the node weights are simply the distance squared between locations.
+//Additionally while the roads are being generated, directions from consumer to producer are being saved and sent to the consumer to make
+//shipping via the truck easier
 //
 //byte[][] mapData: This 2D byte array represents all available tiles on the map. bytes of 0 represent an available tile, while
 //1 represents a producer
 //2 represents a road (it matters that the least significant bit is a 0)
 //3 represents a consumer
+//The Most significant bit -> X000 0000 represents if the tile has a truck on it or not
 //
 //Created by: Michael Feldman
 //Date: 5-29-2019
 
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 public class GameSpawner : MonoBehaviour
@@ -23,6 +28,8 @@ public class GameSpawner : MonoBehaviour
     public Transform producerContainer, consumerContainer, roadContainer;
     public static float worldScale =.1f;
     private float worldScaleSquared;
+
+    public bool onlyConnectShortestRoutes;
     // Start is called before the first frame update
     void Start()
     {
@@ -35,10 +42,10 @@ public class GameSpawner : MonoBehaviour
     {
         //initialize map of size 256 x 256 with all 0's for empty slots
         mapData = new byte[mapSize.x][];
-        for(int i=0; i<mapData.Length; i++)
+        for (int i = 0; i < mapData.Length; i++)
         {
             mapData[i] = new byte[mapSize.y];
-            for(int j=0; j<mapSize.y; j++)
+            for (int j = 0; j < mapSize.y; j++)
             {
                 mapData[i][j] = 0;
             }
@@ -56,33 +63,54 @@ public class GameSpawner : MonoBehaviour
         //assign the consumers to the nearest producer
         float min = maxDistanceSqr;
         Producer nearest = new Producer(); //placeholder
-        foreach(Transform consumer in consumerContainer){
-            foreach(Transform producer in producerContainer)
-            {
-                float distSqr = (producer.position/worldScale - consumer.position/worldScale).sqrMagnitude;
-                if (distSqr < min)
-                {
-                    min = distSqr;
-                    nearest = producer.GetComponent<Producer>();
-                }
-            }
-            //actually assign the consumer to be part of the producer network
-            nearest.AddConsumer(consumer);
-            GenerateRoadFromTo(consumer, nearest.transform, 2, 3, 1,true);
-            min = maxDistanceSqr;
-        }
-
-        //finally the roads
-        //initialize some variables we need for pathfinding
-        //worldScaleSquared = Mathf.Pow(worldScale, 2);
-        
-        /*foreach(Transform consumer in consumerContainer)
+        if (onlyConnectShortestRoutes)
         {
-            foreach(Transform producer in producerContainer)
+            foreach (Transform consumer in consumerContainer)
             {
-                GenerateRoadFromTo(consumer, producer, 2, 3, 1);
+                foreach (Transform producer in producerContainer)
+                {
+                    float distSqr = (producer.position / worldScale - consumer.position / worldScale).sqrMagnitude;
+                    if (distSqr < min)
+                    {
+                        min = distSqr;
+                        nearest = producer.GetComponent<Producer>();
+                    }
+                }
+                //actually assign the consumer to be part of the producer network
+                nearest.AddConsumer(consumer);
+                GenerateRoadFromTo(consumer, nearest.transform, 2, 3, 1, true);
+                min = maxDistanceSqr;
             }
-        }*/
+        }
+        else
+        {
+            //make roads between all consumers to all producers
+            min = maxDistanceSqr;
+            nearest = new Producer(); //placeholder
+            foreach (Transform consumer in consumerContainer)
+            {
+                foreach (Transform producer in producerContainer)
+                {
+
+                    float distSqr = (producer.position / worldScale - consumer.position / worldScale).sqrMagnitude;
+                    if (distSqr < min)
+                    {
+                        min = distSqr;
+                        nearest = producer.GetComponent<Producer>();
+                    }
+                }
+                //actually assign the consumer to be part of the producer network
+                nearest.AddConsumer(consumer);
+                foreach (Transform producer in producerContainer)
+                {
+                    if (producer.position == nearest.transform.position)
+                        GenerateRoadFromTo(consumer, producer.transform, 2, 3, 1, true);
+                    else
+                        GenerateRoadFromTo(consumer, producer.transform, 2, 3, 1);
+                }
+                min = maxDistanceSqr;
+            }
+        }
     }
 
     private void SpawnBuildingRandom(Transform prefab, Transform prefabContainer, int count, byte tileId)
@@ -102,13 +130,8 @@ public class GameSpawner : MonoBehaviour
             mapData[newPos.x][newPos.z] = tileId;
         }
     }
-
-    private void TestFunction(Transform origin, Transform destination, byte tileId, byte originTileId, byte destinationTileId, bool consToProd = false)
-    {
-
-    }
     
-    private void GenerateRoadFromTo(Transform origin, Transform destination, byte tileId, byte originTileId, byte destinationTileId, bool consToProd=false)
+    private void GenerateRoadFromTo(Transform origin, Transform destination, byte tileId, byte originTileId, byte destinationTileId, bool prioritizedRoute=false)
     {
         Vector2Int current = new Vector2Int(Mathf.RoundToInt(origin.position.x / worldScale), Mathf.RoundToInt(origin.position.z / worldScale));
         Vector2Int final = new Vector2Int(Mathf.RoundToInt(destination.position.x / worldScale), Mathf.RoundToInt(destination.position.z / worldScale));
@@ -121,6 +144,8 @@ public class GameSpawner : MonoBehaviour
         Vector2 tmpPos;
         float tmpMin;
         int minIndex;
+
+        Queue<Vector2Int> path = new Queue<Vector2Int>();
         
         //keep dropping roads until we have reaced our destination
         while ((final-current).sqrMagnitude >1.1f)
@@ -180,22 +205,22 @@ public class GameSpawner : MonoBehaviour
             if (minIndex == 0)
             {
                 current += Vector2Int.up;
-                targetId = (byte)(targetId | 32); //up to producer down to consumer
+                path.Enqueue(Vector2Int.up);
             }
             else if (minIndex == 1)
             {
                 current += Vector2Int.right;
-                targetId = (byte)(targetId | 112); //right to producer left to consumer
+                path.Enqueue(Vector2Int.right);
             }
             else if (minIndex == 2)
             {
                 current += Vector2Int.down;
-                targetId = (byte)(targetId | 128); //down to producer left to consumer
+                path.Enqueue(Vector2Int.down);
             }
             else if (minIndex == 3)
             {
                 current += Vector2Int.left;
-                targetId = (byte)(targetId | 208); //left to producer left to consumer
+                path.Enqueue(Vector2Int.left);
             }
             else
             {
@@ -206,7 +231,10 @@ public class GameSpawner : MonoBehaviour
             //instantiate the road and add it to our map
             Instantiate(road, new Vector3(current.x * worldScale, -.05f, current.y * worldScale), Quaternion.identity, roadContainer);
             mapData[current.x][current.y] = targetId;
-
+        }
+        if (origin.GetComponent<Consumer>() && prioritizedRoute)
+        {
+            origin.GetComponent<Consumer>().SetPath(path);//.path = path;
         }
     }
 }
